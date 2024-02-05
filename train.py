@@ -151,9 +151,9 @@ def train(model, train_loader, val_loader, args):
         epochs_tqdm.refresh()  # to show immediately the update
 
         if epoch % 100 == 99:
-            print(f"Epoch {epoch+1}/{args.epochs}, Train Loss: {avg_train_loss:.6f}, Val Loss: {avg_val_loss:.6f}")
+            print(f"\n")
 
-    print(f"Epoch {epoch+1}/{args.epochs}, Train Loss: {avg_train_loss:.6f}, Val Loss: {avg_val_loss:.6f}")
+    print(f"\nFinal Epoch {epoch+1}/{args.epochs}, Train Loss: {avg_train_loss:.6f}, Val Loss: {avg_val_loss:.6f}\n")
 
 
 ################################################################################
