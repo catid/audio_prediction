@@ -2,6 +2,8 @@
 
 Demonstrates a simple audio prediction training loop.
 
+I think people working on biologically plausible artificial neurons should start on this toy problem.  Basically the brain is built up of predictor units, so an artificial neuron should be able to do sequence prediction.  If you're using standard things like RNN or transformer decoders then fine, but if you want to build something to replace them then it should be able to do well on this kind of simple test.  And since it runs very fast on a laptop you can evaluate ideas rapidly.
+
 ## How-To
 
 Requires conda: https://docs.conda.io/projects/miniconda/en/latest/
