@@ -19,11 +19,54 @@ class AudioRNN(nn.Module):
         # Project to output dim
         self.fc = nn.Linear(args.hidden_size, dim)
 
-    def forward(self, x):
+    def forward(self, x, training=True):
         out, _ = self.rnn(x)
         out = self.fc(out)
         return out
 
+
+class SimpleMLP(nn.Module):
+    def __init__(self, dim):
+        super(SimpleMLP, self).__init__()
+
+        hidden_size = dim * 2
+        self.net = nn.Sequential(
+            nn.Linear(dim, hidden_size),
+            nn.GELU(),
+            nn.Linear(hidden_size, dim)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+import torch.nn.functional as F
+
+class SimpleRMSNorm(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.scale = dim ** 0.5
+
+    def forward(self, x):
+        return F.normalize(x, dim = -1) * self.scale
+
+class PreNormResidual(nn.Module):
+    def __init__(self, dim, fn):
+        super().__init__()
+        self.fn = fn
+        self.norm = SimpleRMSNorm(dim)
+
+    def forward(self, x):
+        return self.norm(self.fn(x) + x)
+
+class AudioMLP(nn.Module):
+    def __init__(self, args, dim):
+        super(AudioMLP, self).__init__()
+
+        self.encode = PreNormResidual(dim, SimpleMLP(dim))
+
+    def forward(self, x, training=True):
+        x = self.encode(x)
+        return x
 
 
 ################################################################################
@@ -113,7 +156,7 @@ def train(model, train_loader, val_loader, args):
 
     model.to(device)
 
-    model = torch.compile(model)
+    #model = torch.compile(model)
 
     criterion = nn.MSELoss()
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
@@ -129,7 +172,7 @@ def train(model, train_loader, val_loader, args):
         for inputs, targets in train_loader:
             inputs, targets = inputs.to(device), targets.to(device)
             optimizer.zero_grad()  # Reset gradients for each batch
-            outputs = model(inputs)
+            outputs = model(inputs, training=True)
             loss = criterion(outputs[:, :-1, :], targets[:, 1:, :])
             loss.backward()
             optimizer.step()
@@ -144,7 +187,7 @@ def train(model, train_loader, val_loader, args):
         with torch.no_grad():
             for inputs, targets in val_loader:
                 inputs, targets = inputs.to(device), targets.to(device)
-                outputs = model(inputs)
+                outputs = model(inputs, training=False)
                 loss = criterion(outputs[:, :-1, :], targets[:, 1:, :])
                 sum_val_loss += loss.item()
 
@@ -178,7 +221,9 @@ def main(args):
 
     train_loader, val_loader, input_dim = generate_audio_datasets(args)
 
+    # RNN performs much better
     model = AudioRNN(args, dim=input_dim)
+    #model = AudioMLP(args, dim=input_dim)
 
     train(model, train_loader, val_loader, args)
 
