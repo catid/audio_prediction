@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 
 ################################################################################
 # Model
@@ -20,6 +23,7 @@ class AudioRNN(nn.Module):
         out, _ = self.rnn(x)
         out = self.fc(out)
         return out
+
 
 
 ################################################################################
@@ -131,7 +135,7 @@ def train(model, train_loader, val_loader, args):
             optimizer.step()
 
             sum_train_loss += loss.item()
-        
+
         avg_train_loss = sum_train_loss / len(train_loader)
 
         model.eval()
@@ -143,7 +147,7 @@ def train(model, train_loader, val_loader, args):
                 outputs = model(inputs)
                 loss = criterion(outputs[:, :-1, :], targets[:, 1:, :])
                 sum_val_loss += loss.item()
-        
+
         avg_val_loss = sum_val_loss / len(val_loader)
 
         # Update tqdm description for epochs with average loss
@@ -160,8 +164,18 @@ def train(model, train_loader, val_loader, args):
 # Entrypoint
 
 import argparse
+import random
+
+def seed_random(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 def main(args):
+    seed_random(args.seed)
+
     train_loader, val_loader, input_dim = generate_audio_datasets(args)
 
     model = AudioRNN(args, dim=input_dim)
@@ -176,6 +190,7 @@ if __name__ == "__main__":
     parser.add_argument('--hidden_size', type=int, default=128, help='Size of RNN hidden state.')
     parser.add_argument('--batch_size', type=int, default=16, help='Size of RNN hidden state.')
     parser.add_argument('--segment_length', type=int, default=500, help='Input segment size.')
+    parser.add_argument('--seed', type=int, default=12345, help='Seed for randomization of data loader')
     args = parser.parse_args()
 
     main(args)
